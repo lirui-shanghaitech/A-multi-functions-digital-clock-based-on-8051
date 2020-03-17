@@ -1,0 +1,128 @@
+C51 COMPILER V9.57.0.0   LCD1602                                                           12/05/2018 02:16:33 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE LCD1602
+OBJECT MODULE PLACED IN .\Objects\LCD1602.obj
+COMPILER INVOKED BY: F:\C51\BIN\C51.EXE code\LCD1602.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\LCD1
+                    -602.lst) TABS(2) OBJECT(.\Objects\LCD1602.obj)
+
+line level    source
+
+   1          #define _LCD1602_C
+   2          #include "pins.h"
+   3          #include "LCD1602.h"
+   4          
+   5          void Delay(unsigned char x)
+   6          {
+   7   1        unsigned int i,j;
+   8   1        for(i=x;i>0;i--)
+   9   1        {
+  10   2          for(j=120;j>0;j--)
+  11   2          {}
+  12   2        }
+  13   1      }
+  14          
+  15          //Check if LCD is ready, assistant function.
+  16          void lcd_ready(void){
+  17   1        unsigned char a;
+  18   1        P0 = 0xff;    //To read the busy pin, set 1 first
+  19   1        LCD_RS = 0;  
+  20   1        LCD_RW = 1;
+  21   1        do {
+  22   2          LCD_E = 1;  //Need a low to high signal.
+  23   2          a = LCD_DATA;   //Read the condition bit.
+  24   2          //Delay(5);
+  25   2          LCD_E = 0;
+  26   2        } while (a&0x80);//Stuck at here untill LCD ready.
+  27   1      }
+  28          
+  29          //Write a commond to LCD. Exposed to outside.
+  30          void lcd_write_cmd(unsigned char command){
+  31   1        lcd_ready();
+  32   1        LCD_RS = 0;
+  33   1        LCD_RW = 0;
+  34   1        LCD_E = 0;
+  35   1        LCD_DATA = command;
+  36   1        LCD_E = 1;
+  37   1        _nop_();
+  38   1        _nop_();
+  39   1        LCD_E = 0;
+  40   1      }
+  41          
+  42          //Write data to LCD. Exposed to outside.
+  43          void lcd_write_data(unsigned char dat) {
+  44   1        lcd_ready();
+  45   1        LCD_RS = 1;
+  46   1        LCD_RW = 0;
+  47   1        LCD_E = 0;
+  48   1        LCD_DATA = dat;
+  49   1        LCD_E = 1;
+  50   1        _nop_();
+  51   1        _nop_();
+  52   1        LCD_E = 0;
+  53   1      }
+  54          
+C51 COMPILER V9.57.0.0   LCD1602                                                           12/05/2018 02:16:33 PAGE 2   
+
+  55          //Set the cursor of LCD.Set the cursor at (x,y)
+  56          void lcd_set_cursor(unsigned char x, unsigned char y){
+  57   1        unsigned char ad = 0;
+  58   1        if(y == 0){
+  59   2          ad = 0x00 + x;
+  60   2        } else {
+  61   2          ad = 0x40 + x;
+  62   2        }
+  63   1        lcd_write_cmd(ad | 0x80);
+  64   1      }
+  65          
+  66          //Show string at the LCD where start at (x,y)
+  67          void lcd_show_string(unsigned char x, unsigned char y, unsigned char *strs){
+  68   1        lcd_set_cursor(x, y);
+  69   1        while (*strs != '\0') {     //If do not reach the end of string, write data. 
+  70   2          lcd_write_data(*strs++);
+  71   2          //strs++;
+  72   2        }
+  73   1      }
+  74          
+  75          //Clear the whole LCD.
+  76          void lcd_clear_screen(void) {
+  77   1        lcd_write_cmd(0x01);
+  78   1      }
+  79          
+  80          //Close the cursor of LCD.
+  81          void lcd_close_cursor(void) {
+  82   1        lcd_write_cmd(0x0C);
+  83   1      }
+  84          
+  85          //Open the cursor of LCD.
+  86          void lcd_open_cursor(void) {
+  87   1        lcd_write_cmd(0x0F);
+  88   1      }
+  89          
+  90          //Init the LCD
+  91          void lcd_init(void){
+  92   1        lcd_write_cmd(0x38); //16*2 dispaly, 5*7 dot matrix, 8 parralel data path.
+  93   1        lcd_write_cmd(0x0C); //Open the LCD, close the cursor.
+  94   1        lcd_write_cmd(0x06); //Char stay, address increment automatically.
+  95   1        lcd_write_cmd(0x01); //Clear the LCD.
+  96   1      }
+  97          
+  98          //Show one char to lcd
+  99          void lcd_show_char(unsigned char x, unsigned char y, unsigned char tmp1) {
+ 100   1        lcd_set_cursor(x, y);
+ 101   1        lcd_write_data(tmp1);
+ 102   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    193    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----       3
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

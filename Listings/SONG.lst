@@ -1,0 +1,46 @@
+C51 COMPILER V9.57.0.0   SONG                                                              11/30/2018 14:56:27 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE SONG
+OBJECT MODULE PLACED IN .\Objects\SONG.obj
+COMPILER INVOKED BY: F:\C51\BIN\C51.EXE code\SONG.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\SONG.ls
+                    -t) TABS(2) OBJECT(.\Objects\SONG.obj)
+
+line level    source
+
+   1          #define _SONG_C
+   2          #include "pins.h"
+   3          #include "SONG.h"
+   4          
+   5          //Using timer1 to play song.
+   6          
+   7          void song_delay(unsigned char t) {
+   8   1        unsigned char i,j;
+   9   1        for(i=0;i<t;i++)
+  10   1          for(j=0;j<8200;j++);
+  11   1        TR1 = 1;
+  12   1      }
+  13          
+  14          void song_begin(void){
+  15   1          unsigned char song_time = 1;
+  16   1          unsigned char i,k = 0;
+  17   1          TMOD = 0x10;
+  18   1          TH1 = 0x00;
+  19   1          TL1 = 0x00;
+  20   1          EA = 1;
+  21   1          ET1 = 1;
+  22   1          while(song_time) {
+  23   2            k = song_code[i] + 7*song_code[i+1] - 1;
+  24   2            song_timer1_high = FH[k];
+  25   2            song_timer1_low  = FL[k];
+  26   2            song_time = song_code[i+2];
+  27   2            i+=3;
+  28   2            TH1 = song_timer1_high;
+  29   2            TL1 = song_timer1_LOW;
+*** ERROR C202 IN LINE 29 OF code\SONG.c: 'song_timer1_LOW': undefined identifier
+  30   2            TR1 = 1;
+  31   2            song_delay(song_time);
+  32   2          }
+  33   1      }
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  1 ERROR(S)

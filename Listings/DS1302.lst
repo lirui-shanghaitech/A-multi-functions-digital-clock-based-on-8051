@@ -1,0 +1,278 @@
+C51 COMPILER V9.57.0.0   DS1302                                                            12/05/2018 02:16:33 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE DS1302
+OBJECT MODULE PLACED IN .\Objects\DS1302.obj
+COMPILER INVOKED BY: F:\C51\BIN\C51.EXE code\DS1302.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\DS130
+                    -2.lst) TABS(2) OBJECT(.\Objects\DS1302.obj)
+
+line level    source
+
+   1          #define _DS1302_C
+   2          #include "pins.h"
+   3          #include "DS1302.h"
+   4          
+   5          
+   6          //Write one byte to DS1302.
+   7          void ds1302_write_byte(unsigned char reg, unsigned char dat){
+   8   1        unsigned char i, addr;  //Temp value.
+   9   1        DS_CE = 0;
+  10   1        _nop_();
+  11   1        DS_CK = 0;
+  12   1        _nop_();
+  13   1        DS_CE = 1;        //Select the DS1302
+  14   1        _nop_();
+  15   1        addr = reg<<1|0x80;     //Change the registor number to the real address.
+  16   1      
+  17   1        for (i=0;i<8;i++) {     //Send one byte address.
+  18   2          DS_IO = addr&0x01;
+  19   2          addr >>= 1;
+  20   2          DS_CK = 1;
+  21   2          _nop_();
+  22   2          DS_CK = 0;
+  23   2          _nop_();
+  24   2        }
+  25   1      
+  26   1        for (i=0;i<8;i++) {     //Send one byte data
+  27   2          DS_IO = dat&0x01;
+  28   2          dat >>= 1;
+  29   2          DS_CK = 1;
+  30   2          _nop_();
+  31   2          DS_CK = 0;
+  32   2          _nop_();
+  33   2        }
+  34   1        DS_CE = 0;              //Release the DS1302.
+  35   1        _nop_();
+  36   1      }
+  37          
+  38          //Read one byte from DS1302.
+  39          unsigned char ds1302_read_byte(unsigned char reg){
+  40   1        unsigned char addr, i;
+  41   1        unsigned char dat1, dat = 0;
+  42   1        
+  43   1        DS_CE = 0;
+  44   1        _nop_();
+  45   1        DS_CK = 0;
+  46   1        _nop_();
+  47   1        DS_CE = 1;        //Select the DS1302
+  48   1        _nop_();
+  49   1        addr = reg<<1|0x81;     //Change the registor number to the real address.
+  50   1        
+  51   1        for (i=0;i<8;i++) {     //First send one byte address.
+  52   2          DS_IO = addr&0x01;
+  53   2          addr >>= 1;
+  54   2          DS_CK = 1;
+C51 COMPILER V9.57.0.0   DS1302                                                            12/05/2018 02:16:33 PAGE 2   
+
+  55   2          _nop_();
+  56   2          DS_CK = 0;
+  57   2          _nop_();
+  58   2          
+  59   2        }
+  60   1        //DS_IO = 1;              //Release the data path.
+  61   1        _nop_();
+  62   1        for(i=0;i<8;i++){
+  63   2          dat1 = DS_IO;
+  64   2          dat = (dat>>1) | (dat1<<7);
+  65   2          DS_CK = 1;
+  66   2          _nop_();
+  67   2          DS_CK = 0;
+  68   2          _nop_();
+  69   2        }
+  70   1        DS_CE = 0;              //Release the DS1302.
+  71   1        _nop_();
+  72   1        DS_CK = 1;
+  73   1        _nop_();
+  74   1        DS_IO = 0;
+  75   1        _nop_();
+  76   1        DS_IO = 1;
+  77   1        _nop_();
+  78   1        //DS_IO = 1;
+  79   1        return dat;             //Return the data.
+  80   1      }
+  81          
+  82          //Burst write, since there are some special condition 
+  83          //the usual method may have mistake, this function write all data once for all.
+  84          void ds1302_burst_write(unsigned char *dat) {
+  85   1        unsigned char i, j = 0;
+  86   1        unsigned com = 0xBE;
+  87   1        unsigned tmp = 0;
+  88   1        
+  89   1        DS_CE = 0;
+  90   1        _nop_();
+  91   1        DS_CK = 0;
+  92   1        _nop_();
+  93   1        DS_CE = 1;              //Select the DS1302.
+  94   1        _nop_();
+  95   1        for (i=0;i<8;i++) {     //Send one byte data, Write the burst write command.
+  96   2          DS_IO = com&0x01;
+  97   2          com >>= 1;
+  98   2          DS_CK = 1;
+  99   2          _nop_();
+ 100   2          DS_CK = 0;
+ 101   2          _nop_();
+ 102   2        }
+ 103   1        //DS_IO = 1;              //Release the data path.
+ 104   1      
+ 105   1        for(j = 0;j<8;j++) {
+ 106   2          tmp = dat[j];
+ 107   2          for (i=0;i<8;i++) { //Send one byte data
+ 108   3            DS_IO = tmp&0x01;
+ 109   3            tmp >>= 1;
+ 110   3            DS_CK = 1;
+ 111   3            _nop_();
+ 112   3            DS_CK = 0;
+ 113   3            _nop_();
+ 114   3          }
+ 115   2          _nop_();
+ 116   2          //DS_IO = 1;          //Release the data path.
+C51 COMPILER V9.57.0.0   DS1302                                                            12/05/2018 02:16:33 PAGE 3   
+
+ 117   2        }
+ 118   1        //DS_CK = 0;
+ 119   1        //DS_CK = 1;
+ 120   1        DS_CE = 0;              //Release the DS1302.
+ 121   1        _nop_();
+ 122   1      }
+ 123          
+ 124          //Burst read, since there are some special condition 
+ 125          //the usual method may have mistake, this function read data once for all.
+ 126          void ds1302_burst_read(unsigned char *dat) {
+ 127   1        unsigned char i,j, temp = 0;
+ 128   1        unsigned char com = 0xBF;
+ 129   1        DS_CE = 0;
+ 130   1        _nop_();
+ 131   1        DS_CK = 0;
+ 132   1        _nop_();
+ 133   1        DS_CE = 1;              //Select the DS1302.
+ 134   1        _nop_();
+ 135   1      
+ 136   1        for (i=0;i<8;i++) {     //Send one byte data, Write the burst write command.
+ 137   2          DS_IO = com&0x01;
+ 138   2          com >>= 1;
+ 139   2          DS_CK = 1;
+ 140   2          _nop_();
+ 141   2          DS_CK = 0;
+ 142   2          _nop_();
+ 143   2        }
+ 144   1        //DS_IO = 1;              //Release the data path.
+ 145   1        _nop_();
+ 146   1        for(j=0;j<8;j++){
+ 147   2          for(i=0x01;i!=0;i<<=1){
+ 148   3            if(DS_IO != 0){
+ 149   4              temp |= i;
+ 150   4            }
+ 151   3            DS_CK = 1;
+ 152   3            _nop_();
+ 153   3            DS_CK = 0;
+ 154   3          }
+ 155   2          dat[j] = temp;
+ 156   2          temp = 0;
+ 157   2          _nop_();
+ 158   2        }
+ 159   1        
+ 160   1        DS_CE = 0;              //Release the DS1302.
+ 161   1        _nop_();
+ 162   1        DS_CK = 1;
+ 163   1        _nop_();
+ 164   1        DS_IO = 0;
+ 165   1        _nop_();
+ 166   1        DS_IO = 1;
+ 167   1        _nop_();
+ 168   1      }
+ 169          
+ 170          //Get the real time from DS1302. Return the result using tim pointer.
+ 171          void ds1302_get_time(struct time_and_date *tim) {
+ 172   1        unsigned char buffer[8];
+ 173   1        ds1302_burst_read(buffer);
+ 174   1        tim->year   = buffer[6] + 0x2000;
+ 175   1        tim->month  = buffer[4];
+ 176   1        tim->day    = buffer[3];
+ 177   1        tim->hour   = buffer[2];
+ 178   1        tim->minute = buffer[1];
+C51 COMPILER V9.57.0.0   DS1302                                                            12/05/2018 02:16:33 PAGE 4   
+
+ 179   1        tim->second = buffer[0];
+ 180   1        tim->week   = buffer[5];
+ 181   1        
+ 182   1        //tim->year   = ds1302_read_byte(6) + 0x2000;
+ 183   1        //tim->month  = ds1302_read_byte(4);
+ 184   1        //tim->day    = ds1302_read_byte(3);
+ 185   1        //tim->hour   = ds1302_read_byte(2);
+ 186   1        //tim->minute = ds1302_read_byte(1);
+ 187   1        //tim->second = ds1302_read_byte(0);
+ 188   1        //tim->week   = ds1302_read_byte(5);
+ 189   1      }
+ 190          
+ 191          //Set the real time to DS1302.
+ 192          void ds1302_set_time(struct time_and_date *tim) {
+ 193   1        unsigned char buffer[8];
+ 194   1        buffer[0] = tim->second;
+ 195   1        buffer[1] = tim->minute;
+ 196   1        buffer[2] = tim->hour;
+ 197   1        buffer[3] = tim->day;
+ 198   1        buffer[4] = tim->month;
+ 199   1        buffer[5] = tim->week;
+ 200   1        buffer[6] = tim->year;
+ 201   1        buffer[7] = 0;
+ 202   1        ds1302_burst_write(buffer);
+ 203   1      }
+ 204          
+ 205          //DS1302 init function. Set the time at 2018,11,27, 12:00, week 2
+ 206          void ds1302_init(void) {
+ 207   1        struct time_and_date code first_time[] = 
+ 208   1        {
+ 209   1          0x2018, 0x11, 0x27, 0x12, 0x00, 0x00, 0x02 
+ 210   1        };
+ 211   1        DS_CE = 0;
+ 212   1        DS_CK = 0;
+ 213   1        if((ds1302_read_byte(0) & 0x80)) {
+ 214   2          ds1302_write_byte(7, 0x00);
+ 215   2          ds1302_set_time(&first_time);
+ 216   2          //ds1302_write_byte(7, 0x80);
+ 217   2        }
+ 218   1      }
+ 219          
+ 220          //
+ 221          void ds1302_date_to_str (struct time_and_date *Time)
+ 222          {
+ 223   1        Time->DateString[0] = ((Time->year>>4) & 0xF) + '0'; 
+ 224   1        Time->DateString[1] = (Time->year & 0x0F) + '0';
+ 225   1        Time->DateString[2] = '-';
+ 226   1        Time->DateString[3] = (Time->month >> 4) + '0';   
+ 227   1        Time->DateString[4] = (Time->month & 0x0F) + '0';
+ 228   1        Time->DateString[5] = '-';
+ 229   1        Time->DateString[6] = (Time->day >> 4) + '0';   
+ 230   1        Time->DateString[7] = (Time->day & 0x0F) + '0';
+ 231   1        Time->DateString[8] = '\0';
+ 232   1      }
+ 233          
+ 234          //
+ 235          void ds1302_time_to_str(struct time_and_date *Time)
+ 236          {
+ 237   1        Time->TimeString[0] = (Time->hour >> 4) + '0';  
+ 238   1        Time->TimeString[1] =(Time->hour & 0x0F) + '0';
+ 239   1        Time->TimeString[2] = ':';
+ 240   1        Time->TimeString[3] = (Time->minute >> 4) + '0';
+C51 COMPILER V9.57.0.0   DS1302                                                            12/05/2018 02:16:33 PAGE 5   
+
+ 241   1        Time->TimeString[4] = (Time->minute & 0x0F) + '0';
+ 242   1        Time->TimeString[5] = ':';
+ 243   1        Time->TimeString[6] = (Time->second>> 4) + '0';   
+ 244   1        Time->TimeString[7] = (Time->second & 0x0F) + '0';
+ 245   1        Time->TimeString[8] = '\0';
+ 246   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    769    ----
+   CONSTANT SIZE    =     26    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----      26
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

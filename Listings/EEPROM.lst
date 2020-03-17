@@ -1,0 +1,200 @@
+C51 COMPILER V9.57.0.0   EEPROM                                                            12/05/2018 02:16:33 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE EEPROM
+OBJECT MODULE PLACED IN .\Objects\EEPROM.obj
+COMPILER INVOKED BY: F:\C51\BIN\C51.EXE code\EEPROM.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\EEPRO
+                    -M.lst) TABS(2) OBJECT(.\Objects\EEPROM.obj)
+
+line level    source
+
+   1          #define _EEPROM_C
+   2          #include "pins.h"
+   3          #include "EEPROM.h"
+   4          
+   5          //The delay function.
+   6          #define I2Cdelay() {_nop_();_nop_();_nop_();_nop_();}
+   7          
+   8          //Procedure to initialize I2C
+   9          void startConfig(){
+  10   1        SDA = 1;
+  11   1        SCL = 1;
+  12   1        I2Cdelay();
+  13   1        SDA = 0;
+  14   1        I2Cdelay();
+  15   1        SCL = 0;
+  16   1      }
+  17          
+  18          //Procedure to stop I2C
+  19          void stopConfig(){
+  20   1        SCL = 0;
+  21   1        SDA = 0;
+  22   1        I2Cdelay();
+  23   1        SCL = 1;
+  24   1        I2Cdelay();
+  25   1        SDA = 1;
+  26   1        I2Cdelay();
+  27   1      }
+  28          
+  29          bit writeI2C(unsigned char dat){
+  30   1        bit a; //return the acknolegement.
+  31   1        unsigned char mask = 0x80; //mask = b1000,0000
+  32   1        while(mask !=0) {
+  33   2          if ((mask&dat) == 0){ //Judge the present bit is 1
+  34   3            SDA = 0;
+  35   3          } else {
+  36   3            SDA = 1;
+  37   3          }
+  38   2          mask >>= 1;
+  39   2          I2Cdelay();
+  40   2          SCL = 1;
+  41   2          I2Cdelay(); //Transfer the data
+  42   2          SCL = 0;
+  43   2        }
+  44   1        SDA = 1;
+  45   1        I2Cdelay();
+  46   1        SCL = 1;
+  47   1        a = SDA;
+  48   1        I2Cdelay();
+  49   1        SCL = 0;
+  50   1        return (~a);
+  51   1      }
+  52          
+  53          //Read I2C from the bus
+  54          unsigned char readI2C(){
+C51 COMPILER V9.57.0.0   EEPROM                                                            12/05/2018 02:16:33 PAGE 2   
+
+  55   1        unsigned char mask = 0x80; //masl value
+  56   1        unsigned char d; //return data
+  57   1        SDA = 1; //Make sure to release the bus.
+  58   1        while(mask !=0) {
+  59   2            I2Cdelay();
+  60   2          SCL = 1;
+  61   2          if (SDA == 1){ //Judge the present bit is 1
+  62   3            d = d | mask;
+  63   3          } else {
+  64   3            d &= ~mask;
+  65   3          }
+  66   2          mask >>= 1;
+  67   2          I2Cdelay();
+  68   2          SCL = 0;
+  69   2        }
+  70   1        SDA = 0; //Begin the ack
+  71   1        I2Cdelay();
+  72   1        SCL = 1;
+  73   1        I2Cdelay();
+  74   1        SCL = 0; //Finishing the ack.
+  75   1        return d;
+  76   1      }
+  77          
+  78          //Read the I2C without the ack
+  79          unsigned char readI2CnoACK(){
+  80   1        unsigned char mask = 0x80; //masl value
+  81   1        unsigned char d; //return data
+  82   1        SDA = 1; //Make sure to release the bus.
+  83   1        while(mask !=0) {
+  84   2            I2Cdelay();
+  85   2          SCL = 1;
+  86   2          if (SDA == 1){ //Judge the present bit is 1
+  87   3            d = d | mask;
+  88   3          } else {
+  89   3            d &= ~mask;
+  90   3          }
+  91   2          mask >>= 1;
+  92   2          I2Cdelay();
+  93   2          SCL = 0;
+  94   2        }
+  95   1        SDA = 1; //SDA is high
+  96   1        I2Cdelay();
+  97   1        SCL = 1;
+  98   1        I2Cdelay();
+  99   1        SCL = 0; //So there is no ack.
+ 100   1        return d;
+ 101   1      }
+ 102          
+ 103          //Write one byte to EEPROM. Using I2C protocal.
+ 104          void eeprom_write_byte(unsigned char addr, unsigned char dat) {
+ 105   1        startConfig();
+ 106   1        writeI2C(0xa0);
+ 107   1        writeI2C(addr);
+ 108   1        writeI2C(dat);
+ 109   1        stopConfig();
+ 110   1      }
+ 111          
+ 112          //Read one byte from EEPROM. Using I2C protocal.
+ 113          unsigned char eeprom_read_byte(unsigned char addr) {
+ 114   1        unsigned char dat;
+ 115   1        startConfig();
+ 116   1        writeI2C(0xa0);
+C51 COMPILER V9.57.0.0   EEPROM                                                            12/05/2018 02:16:33 PAGE 3   
+
+ 117   1        writeI2C(addr);
+ 118   1        startConfig();
+ 119   1        writeI2C(0xa1);
+ 120   1        dat = readI2CnoACK();
+ 121   1        stopConfig();
+ 122   1        return dat;
+ 123   1      }
+ 124          
+ 125          //Read multi bytes from EEPROM. Using I2C protocal.
+ 126          void eeprom_read_multi(unsigned char *buffer, unsigned char addr, unsigned char len) {
+ 127   1        do {
+ 128   2          startConfig();
+ 129   2          if (writeI2C(0xa0)) {
+ 130   3            break;
+ 131   3          }
+ 132   2          stopConfig();
+ 133   2        } while(1);
+ 134   1        writeI2C(addr);
+ 135   1        startConfig();
+ 136   1        writeI2C(0xa1);
+ 137   1        while(len > 1) {
+ 138   2          *buffer++ = readI2C();
+ 139   2          len--;
+ 140   2        
+ 141   2        }
+ 142   1        *buffer = readI2CnoACK();
+ 143   1        stopConfig();
+ 144   1      }
+ 145          
+ 146          //Write multi bytes to EEPROM, Using the page write method, this method is quiker. Using I2C protocal.
+ 147          void eeprom_write_multi(unsigned char *buffer, unsigned char addr, unsigned char len) {
+ 148   1        while(len > 0) {
+ 149   2          do {
+ 150   3            startConfig();
+ 151   3            if (writeI2C(0xa0)) {
+ 152   4              break;
+ 153   4            }
+ 154   3            stopConfig();
+ 155   3          } while(1);
+ 156   2          writeI2C(addr);
+ 157   2          while(len > 0) {
+ 158   3            writeI2C(*buffer++);
+ 159   3            len--;
+ 160   3            addr++;
+ 161   3            if((addr&0x07) == 0) {
+ 162   4              break;
+ 163   4            }
+ 164   3          }
+ 165   2          stopConfig();
+ 166   2        }
+ 167   1      }
+ 168          
+ 169          
+ 170          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    388    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----      10
+C51 COMPILER V9.57.0.0   EEPROM                                                            12/05/2018 02:16:33 PAGE 4   
+
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----       1
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

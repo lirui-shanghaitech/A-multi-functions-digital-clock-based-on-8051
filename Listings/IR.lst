@@ -1,0 +1,126 @@
+C51 COMPILER V9.57.0.0   IR                                                                11/29/2018 23:00:27 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE IR
+OBJECT MODULE PLACED IN .\Objects\IR.obj
+COMPILER INVOKED BY: F:\C51\BIN\C51.EXE code\IR.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\IR.lst) T
+                    -ABS(2) OBJECT(.\Objects\IR.obj)
+
+line level    source
+
+   1          #define _IR_C
+   2          #include "pins.h"
+   3          #include "IR.h"
+   4          
+   5          struct time_and_date SetTime;
+   6          bit ir_finish = 0; //Ir flag if recieved data, set to 1, else set to 0.
+   7          unsigned char ir_data[4]; //Data buffer since there are 4 bytes need to be recieved.
+   8          const uint8 code ir_map[][2] = {  //???????PC??????
+   9              {0x45,0x00}, {0x46,0x00}, {0x47,0x1B}, //??->?  Mode->?   ??->ESC
+  10              {0x44,0x00}, {0x40,0x25}, {0x43,0x27}, //??->?  ??->?? ??->??
+  11              {0x07,0x00}, {0x15,0x28}, {0x09,0x26}, // EQ->?   ??->?? ??->??
+  12              {0x16, '0'}, {0x19,0x1B}, {0x0D,0x0D}, //'0'->'0'  ??->ESC  U/SD->??
+  13              {0x0C, '1'}, {0x18, '2'}, {0x5E, '3'}, //'1'->'1'  '2'->'2'   '3'->'3'
+  14              {0x08, '4'}, {0x1C, '5'}, {0x5A, '6'}, //'4'->'4'  '5'->'5'   '6'->'6'
+  15              {0x42, '7'}, {0x52, '8'}, {0x4A, '9'}, //'7'->'7'  '6'->'8'   '9'->'9'
+  16          };
+  17          
+  18          
+  19          //Init the infrared equipment.
+  20          void ir_init(void) {
+  21   1        IR_DATA = 1;            //To prepare read the value.
+  22   1        TMOD = 0x01;
+  23   1        TH0 = 0x00;
+  24   1        TL0 = 0x00;
+  25   1        EA = 1;                 //Open the global interrupt
+  26   1        ET0 = 0;                //Forbid the timer0 interrupt
+  27   1        TR0 = 0;                //Shut down the timer0.
+  28   1        IT0 = 1;                //Open the external interrupt0
+  29   1        EX0 = 1;                //Using the edge triger.
+  30   1      }
+  31          
+  32          //Get the low voltage time.
+  33          unsigned int ir_get_high_time(){
+  34   1        TH0 = 0;
+  35   1        TL0 = 0;
+  36   1        TR0 = 1;                //Open the timer 0
+  37   1        while(!IR_DATA) {       //Get the low time
+  38   2          if (TH0 > 0X40)       //To prevent the wrong condition break if takes too long.
+  39   2            break;
+  40   2        }
+  41   1        TR0 = 0;                //Shut down the timer0.
+  42   1        return (TH0*256 + TL0);
+  43   1      }
+  44          
+  45          //Get the high voltage time.
+  46          unsigned int ir_get_low_time() {
+  47   1        TH0 = 0;
+  48   1        TL0 = 0;
+  49   1        TR0 = 1;
+  50   1        while(IR_DATA){
+  51   2          if (TH0 > 0x40)
+  52   2            break;
+  53   2        }
+  54   1        TR0 = 0;
+C51 COMPILER V9.57.0.0   IR                                                                11/29/2018 23:00:27 PAGE 2   
+
+  55   1        return (TH0*256 + TL0);
+  56   1      }
+  57          
+  58          //Interrupt0 serve function. Get the data.
+  59          void ir_get_data() interrupt 0 {
+  60   1        unsigned char i, j = 0;
+  61   1        unsigned char recieved_byte;
+  62   1        unsigned int tmp;
+  63   1        tmp = ir_get_low_time();
+  64   1        if((tmp < 7800) || (tmp > 8700)) {            //Get the first 9ms
+  65   2          IE0 = 0;
+  66   2          return;
+  67   2        }
+  68   1        
+  69   1        tmp = ir_get_high_time();                     //Get the low 4.5ms
+  70   1        if((tmp < 3600) || (tmp > 4600)) {
+  71   2          IE0 = 0;
+  72   2          return;
+  73   2        }
+  74   1        
+  75   1        for(i = 0; i < 4; i++){
+  76   2          for(j = 0;j < 8; j++) {
+  77   3            tmp = ir_get_low_time();                  //Get the 560us low voltage.
+  78   3            if((tmp < 310) || (tmp > 720)) {
+  79   4              IE0 = 0;
+  80   4              return;
+  81   4            }
+  82   3            
+  83   3            tmp = ir_get_high_time();
+  84   3            if ((tmp > 310) && (tmp < 720)) {         //If the time between 1460us to 1900us. set 1 else set 0.
+  85   4              recieved_byte >>= 1;
+  86   4            } else if ((tmp > 1340)&&(tmp < 1750)) {
+  87   4              recieved_byte >>= 1;
+  88   4              recieved_byte |= 0x80;
+  89   4            } else {                                  //If not at that scope exist.
+  90   4              IE0 = 0;
+  91   4              return;
+  92   4            }
+  93   3          }
+  94   2          ir_data[i] = recieved_byte;
+  95   2        }
+  96   1        ir_finish = 1;                                //Finish recieve.
+  97   1        IE0 = 0;
+  98   1      }
+  99          
+*** WARNING C230 IN LINE 99 OF code\IR.c: 'SetTime': uses undefined struct/union tag 'time_and_date'
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    291    ----
+   CONSTANT SIZE    =     42    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      4    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      1    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  1 WARNING(S),  0 ERROR(S)
